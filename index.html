@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>RFID Dashboard</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    #adminPanel { display: none; }
+  </style>
+</head>
+<body>
+
+<h1 id="user">Not connected</h1>
+<div id="uid">Waiting...</div>
+
+<div id="adminPanel">
+  <h2>Admin Controls</h2>
+  <button>Manage Cards</button>
+  <button>Run Scripts</button>
+</div>
+
+<script>
+  const ws = new WebSocket('ws://localhost:8080');
+
+  ws.onmessage = event => {
+    const data = JSON.parse(event.data);
+
+    document.getElementById('user').textContent =
+      `${data.user} (${data.role})`;
+
+    document.getElementById('uid').textContent = data.uid;
+
+    if (data.role === 'admin') {
+      document.getElementById('adminPanel').style.display = 'block';
+    }
+  };
+</script>
+
+</body>
+</html>
