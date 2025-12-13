@@ -9,62 +9,50 @@
 <style>
 body {
   font-family: Roboto, sans-serif;
-  background: #111;
-  color: #eee;
-  padding: 20px;
+  background:#111;
+  color:#eee;
+  padding:20px;
 }
-
-h1, h2 {
-  margin-top: 0;
-}
-
 .card {
-  background: #1e1e1e;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 15px;
+  background:#1e1e1e;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:15px;
 }
-
 .tag-card {
-  background: #181818;
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 10px;
-  box-shadow: 0 0 0 1px #2a2a2a;
+  background:#181818;
+  border-radius:8px;
+  padding:10px;
+  margin-bottom:10px;
+  box-shadow:0 0 0 1px #2a2a2a;
 }
-
 .tag {
-  display: flex;
-  align-items: center;
+  display:flex;
+  align-items:center;
 }
-
 .tag span {
-  width: 160px;
-  font-family: monospace;
-  font-size: 13px;
+  width:160px;
+  font-family:monospace;
+  font-size:13px;
 }
-
 input {
-  background: #111;
-  color: #eee;
-  border: 1px solid #333;
-  border-radius: 5px;
-  padding: 5px;
+  background:#111;
+  color:#eee;
+  border:1px solid #333;
+  border-radius:5px;
+  padding:5px;
 }
-
 button {
-  margin-left: 5px;
-  cursor: pointer;
+  margin-left:5px;
+  cursor:pointer;
 }
-
 .details {
-  margin-top: 10px;
-  display: none;
+  margin-top:10px;
+  display:none;
 }
-
 .danger {
-  background: #b33;
-  color: white;
+  background:#b33;
+  color:white;
 }
 </style>
 </head>
@@ -89,14 +77,9 @@ button {
 const ws = new WebSocket('ws://localhost:8080');
 let lastUID = null;
 
-ws.onopen = () => {
-  ws.send(JSON.stringify({ type: 'getAllTags' }));
-};
-
-ws.onerror = () => {
-  document.getElementById('lastScan').textContent =
-    'Desktop app not connected';
-};
+ws.onopen = () => ws.send(JSON.stringify({ type:'getAllTags' }));
+ws.onerror = () =>
+  document.getElementById('lastScan').textContent = 'Desktop app not connected';
 
 ws.onmessage = e => {
   const data = JSON.parse(e.data);
@@ -108,40 +91,50 @@ ws.onmessage = e => {
     document.getElementById('newName').value = data.nickname || '';
   }
 
-  if (data.type === 'allTags') {
-    renderTags(data.tags);
-  }
+  if (data.type === 'allTags') renderTags(data.tags);
 };
 
 function saveLast() {
   if (!lastUID) return;
-
   ws.send(JSON.stringify({
-    type: 'saveTag',
-    uid: lastUID,
-    nickname: document.getElementById('newName').value
+    type:'saveTag',
+    uid:lastUID,
+    nickname:document.getElementById('newName').value
   }));
-
-  ws.send(JSON.stringify({ type: 'getAllTags' }));
+  ws.send(JSON.stringify({ type:'getAllTags' }));
 }
 
 function toggle(uid) {
-  const d = document.getElementById('details-' + uid);
+  const d = document.getElementById('details-'+uid);
   d.style.display = d.style.display === 'none' ? 'block' : 'none';
 }
 
 function saveTag(uid) {
   ws.send(JSON.stringify({
-    type: 'saveTag',
+    type:'saveTag',
     uid,
-    nickname: document.getElementById('name-' + uid).value,
-    script: document.getElementById('script-' + uid).value
+    nickname:document.getElementById('name-'+uid).value
   }));
 }
 
 function deleteTag(uid) {
-  ws.send(JSON.stringify({ type: 'deleteTag', uid }));
-  document.getElementById('card-' + uid).remove();
+  ws.send(JSON.stringify({ type:'deleteTag', uid }));
+  document.getElementById('card-'+uid).remove();
+}
+
+function uploadBat(event, uid) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    ws.send(JSON.stringify({
+      type:'uploadScript',
+      uid,
+      content:reader.result
+    }));
+  };
+  reader.readAsText(file);
 }
 
 function renderTags(tags) {
@@ -151,40 +144,34 @@ function renderTags(tags) {
   Object.entries(tags).forEach(([uid, data]) => {
     const card = document.createElement('div');
     card.className = 'tag-card';
-    card.id = 'card-' + uid;
+    card.id = 'card-'+uid;
 
-    const row = document.createElement('div');
-    row.className = 'tag';
-    row.innerHTML = `
-      <span>${uid}</span>
-      <input id="name-${uid}" value="${data.nickname || ''}">
-      <button onclick="toggle('${uid}')">▼</button>
-    `;
+    card.innerHTML = `
+      <div class="tag">
+        <span>${uid}</span>
+        <input id="name-${uid}" value="${data.nickname || ''}">
+        <button onclick="toggle('${uid}')">▼</button>
+      </div>
 
-    const details = document.createElement('div');
-    details.className = 'details';
-    details.id = 'details-' + uid;
-    details.innerHTML = `
-      <div>Batch file path:</div>
-      <input id="script-${uid}" style="width:100%" placeholder="C:\\path\\to\\script.bat"
-             value="${data.script || ''}">
-      <br><br>
-      <button onclick="saveTag('${uid}')">Save</button>
-      <button class="danger" onclick="deleteTag('${uid}')">Delete</button>
-      <div style="font-size:12px;color:#aaa;margin-top:8px">
-        Created: ${data.created ? new Date(data.created).toLocaleString() : '—'}<br>
-        Last Seen: ${data.lastSeen ? new Date(data.lastSeen).toLocaleString() : '—'}
+      <div class="details" id="details-${uid}">
+        <div>Batch file:</div>
+        <input style="width:100%" value="${data.script || ''}" readonly>
+        <br><br>
+        <input type="file" accept=".bat" onchange="uploadBat(event,'${uid}')">
+        <br><br>
+        <button onclick="saveTag('${uid}')">Save</button>
+        <button class="danger" onclick="deleteTag('${uid}')">Delete</button>
+        <div style="font-size:12px;color:#aaa;margin-top:8px">
+          Created: ${data.created ? new Date(data.created).toLocaleString() : '—'}<br>
+          Last Seen: ${data.lastSeen ? new Date(data.lastSeen).toLocaleString() : '—'}
+        </div>
       </div>
     `;
 
-    card.appendChild(row);
-    card.appendChild(details);
     list.appendChild(card);
   });
 
-  if (!list.innerHTML) {
-    list.textContent = 'No saved tags';
-  }
+  if (!list.innerHTML) list.textContent = 'No saved tags';
 }
 </script>
 
