@@ -1,103 +1,113 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>RFID Tag Manager</title>
+  <meta charset="UTF-8">
+  <title>RFID Tag Manager</title>
 
-<style>
-  body {
-    font-family: Roboto, Arial, sans-serif;
-    background: #111;
-    color: #eee;
-    padding: 20px;
-  }
+  <style>
+    body {
+      font-family: Roboto, sans-serif;
+      padding: 20px;
+      background: #111;
+      color: #eee;
+    }
 
-  h1, h2 {
-    margin-top: 0;
-  }
+    h1, h2 {
+      margin-top: 0;
+    }
 
-  .card {
-    background: #1e1e1e;
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 12px;
-    box-shadow: 0 0 10px #000;
-  }
+    .card {
+      background: #1e1e1e;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 12px;
+    }
 
-  .tag-card {
-    background: #181818;
-    padding: 12px;
-    border-radius: 10px;
-    margin-bottom: 12px;
-    border: 1px solid #2a2a2a;
-  }
+    .tag-card {
+      background: #181818;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: inset 0 0 0 1px #222;
+    }
 
-  .tag-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-  }
+    .tag-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
 
-  .tag-header span {
-    font-family: monospace;
-    font-size: 14px;
-  }
+    .tag-header span {
+      font-family: monospace;
+      font-size: 14px;
+    }
 
-  .details {
-    display: none;
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px solid #333;
-  }
+    .tag-header button {
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 16px;
+      transition: transform 0.25s ease;
+      cursor: pointer;
+    }
 
-  input {
-    width: 100%;
-    padding: 6px;
-    margin-top: 4px;
-    background: #111;
-    color: #eee;
-    border: 1px solid #333;
-    border-radius: 6px;
-  }
+    .tag-header button.open {
+      transform: rotate(180deg);
+    }
 
-  button {
-    padding: 6px 12px;
-    margin-top: 8px;
-    cursor: pointer;
-    background: #333;
-    color: #eee;
-    border: none;
-    border-radius: 6px;
-  }
+    .details {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.35s ease, opacity 0.25s ease;
+      margin-top: 10px;
+    }
 
-  button:hover {
-    background: #444;
-  }
+    .details.open {
+      max-height: 600px;
+      opacity: 1;
+    }
 
-  .danger {
-    background: #b33;
-  }
+    input {
+      width: 100%;
+      padding: 6px;
+      margin-top: 4px;
+      background: #111;
+      color: #eee;
+      border-radius: 6px;
+      border: 1px solid #333;
+    }
 
-  .danger:hover {
-    background: #d44;
-  }
+    button {
+      padding: 6px 12px;
+      margin-top: 8px;
+      margin-right: 6px;
+      cursor: pointer;
+      border-radius: 6px;
+      border: none;
+      background: #444;
+      color: #eee;
+    }
 
-  .save {
-    background: #6ab850;
-    color: #19400c;
-  }
+    .danger {
+      background: #b33;
+      color: #fff;
+    }
 
-  .save:hover {
-    background: #7ed15f;
-  }
+    .label {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-top: 8px;
+    }
 
-  .small {
-    font-size: 12px;
-    color: #aaa;
-    margin-top: 6px;
-  }
-</style>
+    .muted {
+      opacity: 0.6;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+  </style>
 </head>
 
 <body>
@@ -107,9 +117,8 @@
 <div class="card">
   <h2>Last Scan</h2>
   <div id="lastScan">Waiting for scan…</div>
-
   <input id="newName" placeholder="Nickname">
-  <button class="save" onclick="saveLast()">Save</button>
+  <button style="background:#6ab850;color:#19400c" onclick="saveLast()">Save</button>
 </div>
 
 <div class="card">
@@ -118,127 +127,113 @@
 </div>
 
 <script>
-const ws = new WebSocket('ws://localhost:8080');
+  const ws = new WebSocket('ws://localhost:8080');
+  let lastUID = null;
 
-let lastUID = null;
-
-ws.onopen = () => {
-  ws.send(JSON.stringify({ type: 'getAllTags' }));
-};
-
-ws.onmessage = e => {
-  const data = JSON.parse(e.data);
-
-  if (data.type === 'scan') {
-    lastUID = data.uid;
-    document.getElementById('lastScan').textContent =
-      data.nickname
-        ? `${data.nickname} - ${data.uid}`
-        : `${data.uid} (unsaved)`;
-
-    document.getElementById('newName').value = data.nickname || '';
-  }
-
-  if (data.type === 'allTags') {
-    renderTags(data.tags);
-  }
-};
-
-function toggle(uid) {
-  const d = document.getElementById('details-' + uid);
-  const hidden = window.getComputedStyle(d).display === 'none';
-  d.style.display = hidden ? 'block' : 'none';
-}
-
-function saveLast() {
-  if (!lastUID) return;
-
-  ws.send(JSON.stringify({
-    type: 'saveTag',
-    uid: lastUID,
-    nickname: document.getElementById('newName').value
-  }));
-
-  ws.send(JSON.stringify({ type: 'getAllTags' }));
-}
-
-function saveTag(uid) {
-  const name = document.getElementById('name-' + uid).value;
-
-  ws.send(JSON.stringify({
-    type: 'saveTag',
-    uid,
-    nickname: name
-  }));
-}
-
-function deleteTag(uid) {
-  ws.send(JSON.stringify({
-    type: 'deleteTag',
-    uid
-  }));
-
-  document.getElementById('card-' + uid).remove();
-}
-
-function uploadBat(e, uid) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    ws.send(JSON.stringify({
-      type: 'uploadScript',
-      uid,
-      filename: file.name,
-      content: reader.result
-    }));
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'getAllTags' }));
   };
-  reader.readAsText(file);
-}
 
-function renderTags(tags) {
-  const list = document.getElementById('tagList');
-  list.innerHTML = '';
+  ws.onmessage = e => {
+    const data = JSON.parse(e.data);
 
-  const entries = Object.entries(tags);
-  if (entries.length === 0) {
-    list.textContent = 'No saved tags';
-    return;
+    if (data.type === 'scan') {
+      lastUID = data.uid;
+      document.getElementById('lastScan').textContent =
+        data.nickname ? `${data.nickname} - ${data.uid}` : `${data.uid} - (unsaved)`;
+      document.getElementById('newName').value = data.nickname || '';
+    }
+
+    if (data.type === 'allTags') {
+      renderTags(data.tags);
+    }
+  };
+
+  function saveLast() {
+    if (!lastUID) return;
+
+    ws.send(JSON.stringify({
+      type: 'saveTag',
+      uid: lastUID,
+      nickname: document.getElementById('newName').value
+    }));
+
+    ws.send(JSON.stringify({ type: 'getAllTags' }));
   }
 
-  entries.forEach(([uid, data]) => {
-    const card = document.createElement('div');
-    card.className = 'tag-card';
-    card.id = 'card-' + uid;
+  function toggle(uid) {
+    const details = document.getElementById('details-' + uid);
+    const arrow = document.getElementById('arrow-' + uid);
 
-    card.innerHTML = `
-      <div class="tag-header" onclick="toggle('${uid}')">
-        <span>${data.nickname || 'Unnamed'} - ${uid}</span>
-        <span>▼</span>
-      </div>
+    const open = details.classList.toggle('open');
+    arrow.classList.toggle('open', open);
+  }
 
-      <div class="details" id="details-${uid}">
-        <div>Nickname</div>
-        <input id="name-${uid}" value="${data.nickname || ''}">
+  function saveTag(uid) {
+    ws.send(JSON.stringify({
+      type: 'saveTag',
+      uid,
+      nickname: document.getElementById('name-' + uid).value
+    }));
+  }
 
-        <div style="margin-top:10px">Batch file</div>
-        <input value="${data.script || ''}" readonly>
+  function deleteTag(uid) {
+    ws.send(JSON.stringify({ type: 'deleteTag', uid }));
+    document.getElementById('card-' + uid).remove();
+  }
 
-        <input type="file" accept=".bat" onchange="uploadBat(event,'${uid}')">
+  function uploadBat(e, uid) {
+    const file = e.target.files[0];
+    if (!file) return;
 
-        <br>
-        <button class="save" onclick="saveTag('${uid}')">Save</button>
-        <button class="danger" onclick="deleteTag('${uid}')">Delete</button>
+    ws.send(JSON.stringify({
+      type: 'uploadBat',
+      uid,
+      filename: file.name
+    }));
+  }
 
-        <div class="small">Created: ${data.created || 'unknown'}</div>
-        <div class="small">Last seen: ${data.lastSeen || 'never'}</div>
-      </div>
-    `;
+  function renderTags(tags) {
+    const list = document.getElementById('tagList');
+    list.innerHTML = '';
 
-    list.appendChild(card);
-  });
-}
+    const entries = Object.entries(tags);
+    if (entries.length === 0) {
+      list.textContent = 'No saved tags';
+      return;
+    }
+
+    entries.forEach(([uid, data]) => {
+      const card = document.createElement('div');
+      card.className = 'tag-card';
+      card.id = 'card-' + uid;
+
+      card.innerHTML = `
+        <div class="tag-header" onclick="toggle('${uid}')">
+          <span>${data.nickname || 'Unnamed Tag'} - ${uid}</span>
+          <button id="arrow-${uid}">▼</button>
+        </div>
+
+        <div class="details" id="details-${uid}">
+          <div class="label">Nickname</div>
+          <input id="name-${uid}" value="${data.nickname || ''}">
+
+          <div class="label">Batch file</div>
+          <input value="${data.script || ''}" readonly>
+
+          <input type="file" accept=".bat" onchange="uploadBat(event,'${uid}')">
+
+          <button onclick="saveTag('${uid}')">Save</button>
+          <button class="danger" onclick="deleteTag('${uid}')">Delete</button>
+
+          <div class="muted">Created: ${data.created || 'Unknown'}</div>
+          <div class="muted">Last seen: ${data.lastSeen || 'Never'}</div>
+        </div>
+      `;
+
+      list.appendChild(card);
+    });
+  }
 </script>
 
 </body>
