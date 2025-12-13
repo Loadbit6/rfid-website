@@ -5,73 +5,98 @@
 <title>RFID Tag Manager</title>
 
 <style>
-body {
-  font-family: Roboto, sans-serif;
-  background: #111;
-  color: #eee;
-  padding: 20px;
-}
+  body {
+    font-family: Roboto, Arial, sans-serif;
+    background: #111;
+    color: #eee;
+    padding: 20px;
+  }
 
-h1, h2 {
-  margin-top: 0;
-}
+  h1, h2 {
+    margin-top: 0;
+  }
 
-.card {
-  background: #1b1b1b;
-  padding: 15px;
-  margin-bottom: 20px;
-  border-radius: 12px;
-}
+  .card {
+    background: #1e1e1e;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 12px;
+    box-shadow: 0 0 10px #000;
+  }
 
-input {
-  padding: 6px;
-  background: #111;
-  color: #eee;
-  border: 1px solid #333;
-  border-radius: 6px;
-}
+  .tag-card {
+    background: #181818;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    border: 1px solid #2a2a2a;
+  }
 
-button {
-  padding: 6px 10px;
-  background: #333;
-  color: #eee;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
+  .tag-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+  }
 
-button:hover {
-  background: #444;
-}
+  .tag-header span {
+    font-family: monospace;
+    font-size: 14px;
+  }
 
-.danger {
-  background: #b33;
-}
+  .details {
+    display: none;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #333;
+  }
 
-.tag-card {
-  background: #1e1e1e;
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 10px;
-}
+  input {
+    width: 100%;
+    padding: 6px;
+    margin-top: 4px;
+    background: #111;
+    color: #eee;
+    border: 1px solid #333;
+    border-radius: 6px;
+  }
 
-.tag {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-}
+  button {
+    padding: 6px 12px;
+    margin-top: 8px;
+    cursor: pointer;
+    background: #333;
+    color: #eee;
+    border: none;
+    border-radius: 6px;
+  }
 
-.tag span {
-  font-family: monospace;
-}
+  button:hover {
+    background: #444;
+  }
 
-.details {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid #333;
-  display: none;
-}
+  .danger {
+    background: #b33;
+  }
+
+  .danger:hover {
+    background: #d44;
+  }
+
+  .save {
+    background: #6ab850;
+    color: #19400c;
+  }
+
+  .save:hover {
+    background: #7ed15f;
+  }
+
+  .small {
+    font-size: 12px;
+    color: #aaa;
+    margin-top: 6px;
+  }
 </style>
 </head>
 
@@ -81,10 +106,10 @@ button:hover {
 
 <div class="card">
   <h2>Last Scan</h2>
-  <div id="lastScan">Waiting for scan</div>
-  <br>
+  <div id="lastScan">Waiting for scan…</div>
+
   <input id="newName" placeholder="Nickname">
-  <button onclick="saveLast()">Save</button>
+  <button class="save" onclick="saveLast()">Save</button>
 </div>
 
 <div class="card">
@@ -94,6 +119,7 @@ button:hover {
 
 <script>
 const ws = new WebSocket('ws://localhost:8080');
+
 let lastUID = null;
 
 ws.onopen = () => {
@@ -106,7 +132,10 @@ ws.onmessage = e => {
   if (data.type === 'scan') {
     lastUID = data.uid;
     document.getElementById('lastScan').textContent =
-      data.uid + (data.nickname ? ' — ' + data.nickname : ' — (unsaved)');
+      data.nickname
+        ? `${data.nickname} - ${data.uid}`
+        : `${data.uid} (unsaved)`;
+
     document.getElementById('newName').value = data.nickname || '';
   }
 
@@ -114,6 +143,12 @@ ws.onmessage = e => {
     renderTags(data.tags);
   }
 };
+
+function toggle(uid) {
+  const d = document.getElementById('details-' + uid);
+  const hidden = window.getComputedStyle(d).display === 'none';
+  d.style.display = hidden ? 'block' : 'none';
+}
 
 function saveLast() {
   if (!lastUID) return;
@@ -127,38 +162,84 @@ function saveLast() {
   ws.send(JSON.stringify({ type: 'getAllTags' }));
 }
 
+function saveTag(uid) {
+  const name = document.getElementById('name-' + uid).value;
+
+  ws.send(JSON.stringify({
+    type: 'saveTag',
+    uid,
+    nickname: name
+  }));
+}
+
+function deleteTag(uid) {
+  ws.send(JSON.stringify({
+    type: 'deleteTag',
+    uid
+  }));
+
+  document.getElementById('card-' + uid).remove();
+}
+
+function uploadBat(e, uid) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    ws.send(JSON.stringify({
+      type: 'uploadScript',
+      uid,
+      filename: file.name,
+      content: reader.result
+    }));
+  };
+  reader.readAsText(file);
+}
+
 function renderTags(tags) {
   const list = document.getElementById('tagList');
   list.innerHTML = '';
 
-  if (Object.keys(tags).length === 0) {
+  const entries = Object.entries(tags);
+  if (entries.length === 0) {
     list.textContent = 'No saved tags';
     return;
   }
 
-  Object.entries(tags).forEach(([uid, data]) => {
+  entries.forEach(([uid, data]) => {
     const card = document.createElement('div');
     card.className = 'tag-card';
+    card.id = 'card-' + uid;
 
     card.innerHTML = `
-      <div class="tag" onclick="toggle('${uid}')">
+      <div class="tag-header" onclick="toggle('${uid}')">
         <span>${data.nickname || 'Unnamed'} - ${uid}</span>
         <span>▼</span>
       </div>
 
       <div class="details" id="details-${uid}">
-        <div>Nickname:</div>
-        <input id="name-${uid}" value="${data.nickname || ''}" style="width:100%">
-        <br><br>
+        <div>Nickname</div>
+        <input id="name-${uid}" value="${data.nickname || ''}">
 
-        <div>Batch file:</div>
-        <input value="${data.script || ''}" style="width:100%" readonly>
-        <br><br>
+        <div style="margin-top:10px">Batch file</div>
+        <input value="${data.script || ''}" readonly>
 
         <input type="file" accept=".bat" onchange="uploadBat(event,'${uid}')">
-        <br><br>
 
-        <button onclick="saveTag('${uid}')">Save</button>
+        <br>
+        <button class="save" onclick="saveTag('${uid}')">Save</button>
         <button class="danger" onclick="deleteTag('${uid}')">Delete</button>
 
-        <div style="margin-top:10px;font-size:12px;c
+        <div class="small">Created: ${data.created || 'unknown'}</div>
+        <div class="small">Last seen: ${data.lastSeen || 'never'}</div>
+      </div>
+    `;
+
+    list.appendChild(card);
+  });
+}
+</script>
+
+</body>
+</html>
