@@ -9,44 +9,62 @@
 <style>
 body {
   font-family: Roboto, sans-serif;
-  background:#111;
-  color:#eee;
-  padding:20px;
+  background: #111;
+  color: #eee;
+  padding: 20px;
 }
+
+h1, h2 {
+  margin-top: 0;
+}
+
 .card {
-  background:#1e1e1e;
-  padding:15px;
-  border-radius:10px;
-  margin-bottom:15px;
+  background: #1e1e1e;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
 }
+
+.tag-card {
+  background: #181818;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 0 0 1px #2a2a2a;
+}
+
 .tag {
-  display:flex;
-  align-items:center;
-  margin-bottom:6px;
+  display: flex;
+  align-items: center;
 }
+
 .tag span {
-  width:160px;
-  font-family:monospace;
+  width: 160px;
+  font-family: monospace;
+  font-size: 13px;
 }
+
 input {
-  background:#111;
-  color:#eee;
-  border:1px solid #333;
-  border-radius:5px;
-  padding:5px;
+  background: #111;
+  color: #eee;
+  border: 1px solid #333;
+  border-radius: 5px;
+  padding: 5px;
 }
+
 button {
-  margin-left:5px;
-  cursor:pointer;
+  margin-left: 5px;
+  cursor: pointer;
 }
-.danger {
-  background:#b33;
-  color:white;
-}
+
 .details {
-  margin-left:160px;
-  margin-bottom:12px;
-  display:none;
+  margin-top: 10px;
+  display: none;
+}
+
+.danger {
+  background: #b33;
+  color: white;
 }
 </style>
 </head>
@@ -90,16 +108,20 @@ ws.onmessage = e => {
     document.getElementById('newName').value = data.nickname || '';
   }
 
-  if (data.type === 'allTags') renderTags(data.tags);
+  if (data.type === 'allTags') {
+    renderTags(data.tags);
+  }
 };
 
 function saveLast() {
   if (!lastUID) return;
+
   ws.send(JSON.stringify({
     type: 'saveTag',
     uid: lastUID,
     nickname: document.getElementById('newName').value
   }));
+
   ws.send(JSON.stringify({ type: 'getAllTags' }));
 }
 
@@ -119,8 +141,7 @@ function saveTag(uid) {
 
 function deleteTag(uid) {
   ws.send(JSON.stringify({ type: 'deleteTag', uid }));
-  document.getElementById('row-' + uid).remove();
-  document.getElementById('details-' + uid).remove();
+  document.getElementById('card-' + uid).remove();
 }
 
 function renderTags(tags) {
@@ -128,9 +149,12 @@ function renderTags(tags) {
   list.innerHTML = '';
 
   Object.entries(tags).forEach(([uid, data]) => {
+    const card = document.createElement('div');
+    card.className = 'tag-card';
+    card.id = 'card-' + uid;
+
     const row = document.createElement('div');
     row.className = 'tag';
-    row.id = 'row-' + uid;
     row.innerHTML = `
       <span>${uid}</span>
       <input id="name-${uid}" value="${data.nickname || ''}">
@@ -141,8 +165,9 @@ function renderTags(tags) {
     details.className = 'details';
     details.id = 'details-' + uid;
     details.innerHTML = `
-      <div>Batch file:</div>
-      <input id="script-${uid}" style="width:100%" value="${data.script || ''}">
+      <div>Batch file path:</div>
+      <input id="script-${uid}" style="width:100%" placeholder="C:\\path\\to\\script.bat"
+             value="${data.script || ''}">
       <br><br>
       <button onclick="saveTag('${uid}')">Save</button>
       <button class="danger" onclick="deleteTag('${uid}')">Delete</button>
@@ -152,11 +177,14 @@ function renderTags(tags) {
       </div>
     `;
 
-    list.appendChild(row);
-    list.appendChild(details);
+    card.appendChild(row);
+    card.appendChild(details);
+    list.appendChild(card);
   });
 
-  if (!list.innerHTML) list.textContent = 'No saved tags';
+  if (!list.innerHTML) {
+    list.textContent = 'No saved tags';
+  }
 }
 </script>
 
