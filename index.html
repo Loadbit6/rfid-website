@@ -2,22 +2,73 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>RFID Manager</title>
+  <title>RFID Tag Manager</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    input { margin: 5px; }
-    .tag { margin-bottom: 5px; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #111;
+      color: #eee;
+    }
+
+    h1, h2 {
+      margin-top: 0;
+    }
+
+    .card {
+      background: #1e1e1e;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+    }
+
+    input {
+      padding: 5px;
+      margin-right: 5px;
+    }
+
+    button {
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+
+    .tag {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .tag span {
+      width: 160px;
+      font-family: monospace;
+    }
+
+    .tag input {
+      flex: 1;
+      margin-right: 5px;
+    }
+
+    .danger {
+      background: #b33;
+      color: white;
+    }
   </style>
 </head>
 <body>
 
-<h2 id="user">Not connected</h2>
+<h1>RFID Tag Manager</h1>
 
-<h3>Last Scan</h3>
-<div id="scan">Waiting...</div>
+<div class="card">
+  <h2>Last Scan</h2>
+  <div id="lastScan">Waiting for scan…</div>
+  <input id="newName" placeholder="Nickname">
+  <button onclick="saveLast()">Save / Rename</button>
+</div>
 
-<h3>Saved Tags</h3>
-<div id="tags"></div>
+<div class="card">
+  <h2>Saved Tags</h2>
+  <div id="tagList">Loading…</div>
+</div>
 
 <script>
   const ws = new WebSocket('ws://localhost:8080');
@@ -32,11 +83,9 @@
 
     if (data.type === 'scan') {
       lastUID = data.uid;
-      document.getElementById('scan').innerHTML =
-        `${data.uid} — ${data.nickname || 'Not saved'}`;
-
-      document.getElementById('user').textContent =
-        `${data.user} (${data.role})`;
+      document.getElementById('lastScan').textContent =
+        data.uid + (data.nickname ? ` — ${data.nickname}` : ' — (unsaved)');
+      document.getElementById('newName').value = data.nickname || '';
     }
 
     if (data.type === 'allTags') {
@@ -44,8 +93,21 @@
     }
   };
 
+  function saveLast() {
+    if (!lastUID) return;
+
+    ws.send(JSON.stringify({
+      type: 'saveTag',
+      uid: lastUID,
+      nickname: document.getElementById('newName').value
+    }));
+
+    ws.send(JSON.stringify({ type: 'getAllTags' }));
+  }
+
   function saveTag(uid) {
     const name = document.getElementById(`name-${uid}`).value;
+
     ws.send(JSON.stringify({
       type: 'saveTag',
       uid,
@@ -58,26 +120,32 @@
       type: 'deleteTag',
       uid
     }));
-    document.getElementById(`tag-${uid}`).remove();
+
+    document.getElementById(`row-${uid}`).remove();
   }
 
   function renderTags(tags) {
-    const container = document.getElementById('tags');
-    container.innerHTML = '';
+    const list = document.getElementById('tagList');
+    list.innerHTML = '';
 
     Object.entries(tags).forEach(([uid, data]) => {
-      const div = document.createElement('div');
-      div.className = 'tag';
-      div.id = `tag-${uid}`;
+      const row = document.createElement('div');
+      row.className = 'tag';
+      row.id = `row-${uid}`;
 
-      div.innerHTML = `
-        <b>${uid}</b>
+      row.innerHTML = `
+        <span>${uid}</span>
         <input id="name-${uid}" value="${data.nickname}">
         <button onclick="saveTag('${uid}')">Save</button>
-        <button onclick="deleteTag('${uid}')">Delete</button>
+        <button class="danger" onclick="deleteTag('${uid}')">Delete</button>
       `;
-      container.appendChild(div);
+
+      list.appendChild(row);
     });
+
+    if (list.innerHTML === '') {
+      list.textContent = 'No saved tags';
+    }
   }
 </script>
 
