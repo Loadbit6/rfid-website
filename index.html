@@ -1,84 +1,92 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>RFID Tag Manager</title>
+  <meta charset="UTF-8">
+  <title>RFID Tag Manager</title>
+  <style>
+    body {
+      font-family: Roboto, sans-serif;
+      padding: 20px;
+      background: #111;
+      color: #eee;
+    }
 
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: #111;
-  color: #eee;
-  padding: 20px;
-}
+    h1, h2 {
+      margin-top: 0;
+    }
 
-h1 {
-  margin-top: 0;
-}
+    .card {
+      background: #1e1e1e;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 10px;
+    }
 
-.card {
-  background: #1e1e1e;
-  padding: 15px;
-  margin-bottom: 20px;
-  border-radius: 10px;
-}
+    input {
+      padding: 5px;
+      margin-right: 5px;
+      background: #111;
+      color: #eee;
+      border-radius: 5px;
+      border: 1px solid #333;
+    }
 
-.tag-card {
-  background: #161616;
-  padding: 12px;
-  margin-bottom: 10px;
-  border-radius: 8px;
-}
+    button {
+      padding: 5px 10px;
+      cursor: pointer;
+    }
 
-.tag-header {
-  display: flex;
-  justify-content: space-between;
-  cursor: pointer;
-}
+    .tag-card {
+      background: #161616;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+    }
 
-.tag-details {
-  display: none;
-  margin-top: 10px;
-}
+    .tag-header {
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+    }
 
-input {
-  background: #111;
-  color: #eee;
-  border: 1px solid #333;
-  border-radius: 5px;
-  padding: 6px;
-  margin-right: 5px;
-}
+    .tag-details {
+      display: none;
+      margin-top: 8px;
+    }
 
-button {
-  padding: 6px 10px;
-  cursor: pointer;
-}
+    .tag span {
+      width: 160px;
+      font-family: monospace;
+    }
 
-.danger {
-  background: #b33;
-  color: white;
-}
+    .tag input {
+      flex: 1;
+      margin-right: 5px;
+    }
 
-.success {
-  background: #6ab850;
-  color: #19400c;
-}
+    .danger {
+      background: #b33;
+      color: white;
+    }
 
-.small {
-  font-size: 12px;
-  opacity: 0.8;
-}
-</style>
+    .success {
+      background-color: #6ab850;
+      color: #19400c;
+    }
+
+    .small {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+  </style>
 </head>
-
 <body>
 
 <h1>RFID Tag Manager</h1>
 
 <div class="card">
   <h2>Last Scan</h2>
-  <div id="lastScan">Waiting for scan…</div>
+  <div id="lastScan">Waiting for scan</div>
   <input id="lastName" placeholder="Nickname">
   <button class="success" onclick="saveLast()">Save</button>
 </div>
