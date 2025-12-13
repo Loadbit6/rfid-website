@@ -1,10 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>RFID Tag Manager</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
 
 <style>
 body {
@@ -19,52 +17,60 @@ h1, h2 {
 }
 
 .card {
-  background: #1e1e1e;
+  background: #1b1b1b;
   padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 15px;
-}
-
-.tag-card {
-  background: #181818;
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 10px;
-  box-shadow: 0 0 0 1px #2a2a2a;
-}
-
-.tag {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.tag span {
-  font-family: monospace;
-  font-size: 13px;
+  margin-bottom: 20px;
+  border-radius: 12px;
 }
 
 input {
+  padding: 6px;
   background: #111;
   color: #eee;
   border: 1px solid #333;
-  border-radius: 5px;
-  padding: 5px;
+  border-radius: 6px;
 }
 
 button {
-  margin-left: 5px;
+  padding: 6px 10px;
+  background: #333;
+  color: #eee;
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
 }
 
-.details {
-  margin-top: 12px;
-  display: none;
+button:hover {
+  background: #444;
 }
 
 .danger {
   background: #b33;
-  color: white;
+}
+
+.tag-card {
+  background: #1e1e1e;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.tag {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.tag span {
+  font-family: monospace;
+}
+
+.details {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #333;
+  display: none;
 }
 </style>
 </head>
@@ -75,7 +81,8 @@ button {
 
 <div class="card">
   <h2>Last Scan</h2>
-  <div id="lastScan">Waiting for scan…</div>
+  <div id="lastScan">Waiting for scan</div>
+  <br>
   <input id="newName" placeholder="Nickname">
   <button onclick="saveLast()">Save</button>
 </div>
@@ -91,11 +98,6 @@ let lastUID = null;
 
 ws.onopen = () => {
   ws.send(JSON.stringify({ type: 'getAllTags' }));
-};
-
-ws.onerror = () => {
-  document.getElementById('lastScan').textContent =
-    'Desktop app not connected';
 };
 
 ws.onmessage = e => {
@@ -125,63 +127,32 @@ function saveLast() {
   ws.send(JSON.stringify({ type: 'getAllTags' }));
 }
 
-function toggle(uid) {
-  const d = document.getElementById('details-' + uid);
-  d.style.display = d.style.display === 'none' ? 'block' : 'none';
-}
-
-function saveTag(uid) {
-  ws.send(JSON.stringify({
-    type: 'saveTag',
-    uid,
-    nickname: document.getElementById('name-' + uid).value
-  }));
-}
-
-function deleteTag(uid) {
-  ws.send(JSON.stringify({ type: 'deleteTag', uid }));
-  document.getElementById('card-' + uid).remove();
-}
-
-function uploadBat(event, uid) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    ws.send(JSON.stringify({
-      type: 'uploadScript',
-      uid,
-      content: reader.result
-    }));
-  };
-  reader.readAsText(file);
-}
-
 function renderTags(tags) {
   const list = document.getElementById('tagList');
   list.innerHTML = '';
 
+  if (Object.keys(tags).length === 0) {
+    list.textContent = 'No saved tags';
+    return;
+  }
+
   Object.entries(tags).forEach(([uid, data]) => {
     const card = document.createElement('div');
     card.className = 'tag-card';
-    card.id = 'card-' + uid;
-
-    const displayName = data.nickname || 'Unnamed Tag';
 
     card.innerHTML = `
-      <div class="tag">
-        <span>${displayName} - ${uid}</span>
-        <button onclick="toggle('${uid}')">▼</button>
+      <div class="tag" onclick="toggle('${uid}')">
+        <span>${data.nickname || 'Unnamed'} - ${uid}</span>
+        <span>▼</span>
       </div>
 
       <div class="details" id="details-${uid}">
         <div>Nickname:</div>
-        <input id="name-${uid}" style="width:100%" value="${data.nickname || ''}">
+        <input id="name-${uid}" value="${data.nickname || ''}" style="width:100%">
         <br><br>
 
         <div>Batch file:</div>
-        <input style="width:100%" value="${data.script || ''}" readonly>
+        <input value="${data.script || ''}" style="width:100%" readonly>
         <br><br>
 
         <input type="file" accept=".bat" onchange="uploadBat(event,'${uid}')">
@@ -190,21 +161,4 @@ function renderTags(tags) {
         <button onclick="saveTag('${uid}')">Save</button>
         <button class="danger" onclick="deleteTag('${uid}')">Delete</button>
 
-        <div style="font-size:12px;color:#aaa;margin-top:8px">
-          Created: ${data.created ? new Date(data.created).toLocaleString() : '—'}<br>
-          Last Seen: ${data.lastSeen ? new Date(data.lastSeen).toLocaleString() : '—'}
-        </div>
-      </div>
-    `;
-
-    list.appendChild(card);
-  });
-
-  if (!list.innerHTML) {
-    list.textContent = 'No saved tags';
-  }
-}
-</script>
-
-</body>
-</html>
+        <div style="margin-top:10px;font-size:12px;c
