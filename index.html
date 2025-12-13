@@ -2,38 +2,83 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>RFID Dashboard</title>
+  <title>RFID Manager</title>
   <style>
     body { font-family: Arial; padding: 20px; }
-    #adminPanel { display: none; }
+    input { margin: 5px; }
+    .tag { margin-bottom: 5px; }
   </style>
 </head>
 <body>
 
-<h1 id="user">Not connected</h1>
-<div id="uid">Waiting...</div>
+<h2 id="user">Not connected</h2>
 
-<div id="adminPanel">
-  <h2>Admin Controls</h2>
-  <button>Manage Cards</button>
-  <button>Run Scripts</button>
-</div>
+<h3>Last Scan</h3>
+<div id="scan">Waiting...</div>
+
+<h3>Saved Tags</h3>
+<div id="tags"></div>
 
 <script>
   const ws = new WebSocket('ws://localhost:8080');
+  let lastUID = null;
 
-  ws.onmessage = event => {
-    const data = JSON.parse(event.data);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'getAllTags' }));
+  };
 
-    document.getElementById('user').textContent =
-      `${data.user} (${data.role})`;
+  ws.onmessage = e => {
+    const data = JSON.parse(e.data);
 
-    document.getElementById('uid').textContent = data.uid;
+    if (data.type === 'scan') {
+      lastUID = data.uid;
+      document.getElementById('scan').innerHTML =
+        `${data.uid} — ${data.nickname || 'Not saved'}`;
 
-    if (data.role === 'admin') {
-      document.getElementById('adminPanel').style.display = 'block';
+      document.getElementById('user').textContent =
+        `${data.user} (${data.role})`;
+    }
+
+    if (data.type === 'allTags') {
+      renderTags(data.tags);
     }
   };
+
+  function saveTag(uid) {
+    const name = document.getElementById(`name-${uid}`).value;
+    ws.send(JSON.stringify({
+      type: 'saveTag',
+      uid,
+      nickname: name
+    }));
+  }
+
+  function deleteTag(uid) {
+    ws.send(JSON.stringify({
+      type: 'deleteTag',
+      uid
+    }));
+    document.getElementById(`tag-${uid}`).remove();
+  }
+
+  function renderTags(tags) {
+    const container = document.getElementById('tags');
+    container.innerHTML = '';
+
+    Object.entries(tags).forEach(([uid, data]) => {
+      const div = document.createElement('div');
+      div.className = 'tag';
+      div.id = `tag-${uid}`;
+
+      div.innerHTML = `
+        <b>${uid}</b>
+        <input id="name-${uid}" value="${data.nickname}">
+        <button onclick="saveTag('${uid}')">Save</button>
+        <button onclick="deleteTag('${uid}')">Delete</button>
+      `;
+      container.appendChild(div);
+    });
+  }
 </script>
 
 </body>
